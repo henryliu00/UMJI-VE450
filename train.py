@@ -22,15 +22,16 @@ def get_num_params():
 
 def run_one_config(config, train_batch_data, valid_batch_data, epochs=10, check_epoch=5):
     print("Training begins.")
+    
     # learning rate decay
     max_lr = 0.003
     min_lr = 0.0001
     decay_epochs = 60
+    tf.reset_default_graph()
     model = MTNet(config)
 
     # build model
     with tf.Session() as sess:
-        
         saver = tf.train.Saver()
         model_path = make_model_path(config)
     
@@ -65,7 +66,6 @@ def run_one_config(config, train_batch_data, valid_batch_data, epochs=10, check_
         print('---------Best score:', score2_name, ':', best_score)
 
     # free default graph
-    tf.reset_default_graph()
     print("Training completed.")
     return model
     

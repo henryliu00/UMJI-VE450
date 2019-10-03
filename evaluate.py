@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 import seaborn
 import pandas as pd
 
-def predict(config, model, batch_data_test, load_data=0):
+def predict(config, model, batch_data_test, load_data=1):
     # load and predict
     y_pred_list = []
     y_real_list = []
@@ -24,7 +24,7 @@ def predict(config, model, batch_data_test, load_data=0):
     y_test = np.asarray(y_real_list).reshape(-1)
     return y_pred, y_test
 
-def evaluate(config, model, batch_data_test, load_data=0):
+def evaluate(config, model, batch_data_test, load_data=1):
     ''' evaluate data with  plot'''
     y_pred, y_test = predict(config, model, batch_data_test, load_data)
 
