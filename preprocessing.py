@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import sklearn.preprocessing 
 
 def unroll(data,sequence_length=24):
     result = []
@@ -15,11 +16,13 @@ def historical(q_train, idx, unroll_length=48, history_length=7):
     return np.asarray(result)
 
 def preprocessing(config, test_split_size=0.1, valid_split_size=0.1):
-    ''' preprocess data according to configuration '''
+    ''' preprocess data according to configuration 
+        (!) when wrapping into batches, for convenience, it would erase scrap data
+    '''
 
     # load data
     try:
-        dataset_path = "nyc_taxi.csv"
+        dataset_path = "data/nyc_taxi.csv"
         df = pd.read_csv(dataset_path)
     except Exception as e:
         print("nyc_taxi.csv doesn't exist")
@@ -32,15 +35,15 @@ def preprocessing(config, test_split_size=0.1, valid_split_size=0.1):
     df['awake'] = (((df['hours'] >= 6) & (df['hours'] <= 23)) | (df['hours'] == 0)).astype(int)
     # add categorical feature indicating awake/sleep (6:00-00:00)
     df['categories'] = df['awake']
-
-    #select and standardize data
     data_n = df[['value', 'hours', 'awake']]
-    standard_scaler = preprocessing.StandardScaler()
+
+    # scaling
+    standard_scaler = sklearn.preprocessing.StandardScaler()
     np_scaled = standard_scaler.fit_transform(data_n)
     data_n = pd.DataFrame(np_scaled)
 
     #important parameters and train/test size
-    prediction_time = 1 
+    prediction_time = 2 # predict one hour later
     unroll_length = config.T
     history_length = config.n
     # testdatacut = testdatasize + unroll_length  + 1
@@ -52,10 +55,27 @@ def preprocessing(config, test_split_size=0.1, valid_split_size=0.1):
     #generate Xi
     result = []
     start_cut = (history_length+1) * unroll_length + 1
-    for i in range(start_cut,q_train.shape[0]):
+    for i in range(start_cut,q.shape[0]):
         result.append(historical(q, i, unroll_length, history_length))
     X = np.asarray(result)
     q = q[start_cut:]
-    # generate y_train
-    y_train = q[:,-1,0].reshape(-1,1)
+    # generate y
+    y = q[:,-1,0].reshape(-1,1)
+    X = X[:-prediction_time]
+    q = q[:-prediction_time]
+    y = y[prediction_time:] # predict one hour later 
+    
+    # data split 
+    batch_size = config.batch_size
+    total_length = q.shape[0] // batch_size
+    valid_split = int( total_length * (1- valid_split_size - test_split_size) )
+    test_split = int( total_length * (1 - test_split_size) )
+
+    batch_data_train = [ (X[100*i:100*(i+1)], q[100*i:100*(i+1)], y[100*i:100*(i+1)]) for i in range(0, valid_split) ]
+    batch_data_valid = [ (X[100*i:100*(i+1)], q[100*i:100*(i+1)], y[100*i:100*(i+1)]) for i in range(valid_split, test_split) ]
+    batch_data_test = [ (X[100*i:100*(i+1)], q[100*i:100*(i+1)], y[100*i:100*(i+1)]) for i in range(test_split, total_length) ]
+
+    return batch_data_train, batch_data_valid, batch_data_test
+
+    
 
